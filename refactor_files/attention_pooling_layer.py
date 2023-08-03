@@ -28,7 +28,6 @@ class MyAttentionModule(torch.nn.Module): # zakladamy ze atom ma 49 featerow
         gates.append(self.gates['NumRadicalElectrons'](x[:,37:38], edge_index))
         logits = torch.cat(gates, dim=-1)
         attention = torch.softmax(logits, dim=-1).unsqueeze(-1)
-        
         subgroups = []
         subgroups.append(self.feats['AtomicNum'](x[:,0:12]) * attention[:,0])
         subgroups.append(self.feats['Degree'](x[:,12:18]) * attention[:,1])
@@ -48,7 +47,7 @@ class MyAttentionModule(torch.nn.Module): # zakladamy ze atom ma 49 featerow
 #warstwa attention pooling
 class MyAttentionModule3(MyAttentionModule): # zakladamy ze atom ma 49 featerow
     def __init__(self, groupFeatures=1):
-        super().__init__(groupFeatures, torch.nn.ModuleDict({ # do wyliczenia atencji dla kazdej grupy cech - jest ich 9
+        super().__init__(torch.nn.ModuleDict({ # do wyliczenia atencji dla kazdej grupy cech - jest ich 9
             'AtomicNum': GCNConv(12, 1),
             'Degree': GCNConv(6, 1),
             'TotalNumHs': GCNConv(5, 1),
@@ -68,15 +67,13 @@ class MyAttentionModule3(MyAttentionModule): # zakladamy ze atom ma 49 featerow
             'IsInRing': torch.nn.Linear(1, groupFeatures),
             'IsAromatic': torch.nn.Linear(1, groupFeatures),
             'NumRadicalElectrons': torch.nn.Linear(1, groupFeatures)
-        }))
+        }), groupFeatures)
 
 
 #warstwa attention pooling
-class MyAttentionModule4(torch.nn.Module): # zakladamy ze atom ma 49 featerow
+class MyAttentionModule4(MyAttentionModule): # zakladamy ze atom ma 49 featerow
     def __init__(self, groupFeatures=1):
-        super().__init__()
-        self.groupFeatures = groupFeatures
-        self.gates = torch.nn.ModuleDict({ # do wyliczenia atencji dla kazdej grupy cech - jest ich 9
+        super().__init__(torch.nn.ModuleDict({ # do wyliczenia atencji dla kazdej grupy cech - jest ich 9
             'AtomicNum': GINConv(attSequential(12), train_eps=True),
             'Degree': GINConv(attSequential(6), train_eps=True),
             'TotalNumHs': GINConv(attSequential(5), train_eps=True),
@@ -86,9 +83,8 @@ class MyAttentionModule4(torch.nn.Module): # zakladamy ze atom ma 49 featerow
             'IsInRing': GINConv(attSequential(1), train_eps=True),
             'IsAromatic': GINConv(attSequential(1), train_eps=True),
             'NumRadicalElectrons': GINConv(attSequential(1), train_eps=True)
-        })
-        
-        self.feats = torch.nn.ModuleDict({ # do transformacji grupy cech w wektor, na razie dziala tylko dla groupFeatures=1
+        }),
+        torch.nn.ModuleDict({ # do transformacji grupy cech w wektor, na razie dziala tylko dla groupFeatures=1
             'AtomicNum': torch.nn.Linear(12, groupFeatures),
             'Degree': torch.nn.Linear(6, groupFeatures),
             'TotalNumHs': torch.nn.Linear(5, groupFeatures),
@@ -98,7 +94,7 @@ class MyAttentionModule4(torch.nn.Module): # zakladamy ze atom ma 49 featerow
             'IsInRing': torch.nn.Linear(1, groupFeatures),
             'IsAromatic': torch.nn.Linear(1, groupFeatures),
             'NumRadicalElectrons': torch.nn.Linear(1, groupFeatures)
-        })
+        }), groupFeatures)
     
 
 
