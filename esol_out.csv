@@ -1,0 +1,7 @@
+,Repr 1,Repr 10,Atention Pooling v2 - size = 3,Atention Pooling v2 - size = 35,Atention Pooling v2 - size = 100
+"1 convs, 64 channels",1.38,1.42,1.32,1.38,1.40
+"1 convs, 512 channels",1.39,1.43,1.31,1.39,1.36
+"3 convs, 64 channels",1.31,1.23,1.37,1.29,1.35
+"3 convs, 512 channels",1.41,1.32,1.38,1.27,1.29
+"5 convs, 64 channels",1.36,1.35,1.39,1.38,1.37
+"5 convs, 512 channels",1.37,1.36,1.44,1.36,1.41

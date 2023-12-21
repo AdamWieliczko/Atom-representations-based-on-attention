@@ -11,5 +11,6 @@ def parse_args(script):
     parser.add_argument('--number_of_epochs', type=int, default=70, help='CUB/miniImagenet/cross/omniglot/cross_char')
     parser.add_argument('--number_of_features_before_layer', type=int, default=25, help='CUB/miniImagenet/cross/omniglot/cross_char')
     parser.add_argument('--number_of_features_after_layer', type=int, default=25, help='CUB/miniImagenet/cross/omniglot/cross_char')
+    parser.add_argument('--seed', type=int, default=1, help='CUB/miniImagenet/cross/omniglot/cross_char')
 
     return parser.parse_args()

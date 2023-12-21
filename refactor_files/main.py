@@ -6,7 +6,7 @@ from attention_pooling_layer import visualize, GraphNeuralNetwork, predict, MyAt
 from tdc import Evaluator
 from data_extractor import GetDataCSV, GetDataSDFHuman, GetDataSDFRat
 from argument_parser import parse_args
-
+from sklearn.model_selection import StratifiedKFold
 
 params = parse_args('main')
 
@@ -19,12 +19,14 @@ y_column = params.y_column
 smiles = "smiles"
 path = f"../Datasets/{dataset}"
 
+seed = params.seed
+
 if dataset in ['qm9.csv', 'esol.csv']:
-    X_train, y_train, X_valid, y_valid, X_test, y_test, train_loader1, valid_loader1, test_loader1, train_loader10, valid_loader10, test_loader10, train_loader, valid_loader, test_loader = GetDataCSV(path, y_column, smiles)
+    X, y, test_dataset_loader, dataset_loaders1, dataset_loaders10, dataset_loaders = GetDataCSV(path, y_column, smiles, seed)
 elif dataset in ['human_halflifetime.sdf']:
-    X_train, y_train, X_valid, y_valid, X_test, y_test, train_loader1, valid_loader1, test_loader1, train_loader10, valid_loader10, test_loader10, train_loader, valid_loader, test_loader = GetDataSDFHuman(path, y_column, smiles)
+    X, y, test_dataset_loader, dataset_loaders1, dataset_loaders10, dataset_loaders = GetDataSDFHuman(path, y_column, smiles, seed)
 else:
-    X_train, y_train, X_valid, y_valid, X_test, y_test, train_loader1, valid_loader1, test_loader1, train_loader10, valid_loader10, test_loader10, train_loader, valid_loader, test_loader = GetDataSDFRat(path, y_column, smiles)
+    X, y, test_dataset_loader, dataset_loaders1, dataset_loaders10, dataset_loaders = GetDataSDFRat(path, y_column, smiles, seed)
 
 num_of_feats = params.number_of_features_before_layer
 num_of_feats_after = params.number_of_features_after_layer
@@ -99,13 +101,23 @@ elif params.module == "MyAttentionModule4":
 #         df.loc[str(n_convs) + " convs, " + str(n_channels) + " channels"] = row
 
 # df.to_csv("esol_out.csv")
+# print(y)
+# y_test = y[len(dataset_loader)*0.9:]
+# test_loader = dataset_loader[len(dataset_loader)*0.9:]
+# dataset_loader = dataset_loader[:len(dataset_loader)*0.9]
+#y_test = y[:980]
 
+best_rmse_score = -1
 
+for current_valid_loader in dataset_loaders:
+    current_m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=layer, features_after_layer=num_of_feats_after)
+    current_m = train_best(current_m, dataset_loaders, current_valid_loader, rmse, epochs=num_of_epochs)
+    predictions, att = predict(m, test_dataset_loader)
+    rmse_score = rmse(y, predictions.flatten())
+    if best_rmse_score == -1 or best_rmse_score < rmse_score:
+        best_rmse_score = rmse_score
+        m = current_m
 
-m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=layer, features_after_layer=num_of_feats_after)
-m = train_best(m, train_loader, valid_loader, rmse, y_valid, epochs=num_of_epochs)
-predictions, att = predict(m, test_loader)
-rmse_score = rmse(y_test, predictions.flatten())
 print("{:.2f}".format(rmse_score))
 
 ###################### atencja #################################
@@ -120,7 +132,7 @@ df_batch.style.set_caption("Hello World")
 
 preds_batches = []
 with torch.no_grad():
-    for data in test_loader:
+    for data in test_dataset_loader:
         x, edge_index, batch = data.x, data.edge_index, data.batch
         
         preds, att = m(x, edge_index, batch)
@@ -130,7 +142,11 @@ with torch.no_grad():
         df_batch.loc[len(df_single)] = torch.mean(gap(att, batch), dim=0).tolist()
 preds = np.concatenate(preds_batches)
 
-rmse_score = rmse(y_test, predictions.flatten())
+rmse_score = rmse(y, predictions.flatten())
 print(f'RMSE = {rmse_score:.2f}')
 df_single.to_csv("esol_att_single.csv")
 df_batch.to_csv("esol_att_batch.csv")
+
+
+
+## ZWRACAĆ X I Y TESTU, ZMNIEJSZYĆ DATASET STARTOWY O ILEŚ

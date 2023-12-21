@@ -161,7 +161,7 @@ def predict(model, test_loader):
     preds = np.concatenate(preds_batches)
     return preds, att
 
-def train_best(model, train_loader, valid_loader, rmse, y_valid, epochs=20, learning_rate = 0.01, saveImg=False, title=""):
+def train_best(model, train_loaders, valid_loader, rmse, y_valid, epochs=20, learning_rate = 0.01, saveImg=False, title=""):
     model.train()
 
     torch.save(model, "train.pth")
@@ -173,14 +173,15 @@ def train_best(model, train_loader, valid_loader, rmse, y_valid, epochs=20, lear
     for epoch in range(1, epochs + 1):
         # preds_batches = []
         running_loss = 0.0
-        for data in train_loader:
-            x, edge_index, batch, y = data.x, data.edge_index, data.batch, data.y
-            model.zero_grad()
-            preds, att = model(x, edge_index, batch)
-            loss = loss_fn(preds, y.reshape(-1, 1))
+        for train_loader in train_loaders:
+            for data in train_loader:
+                x, edge_index, batch, y = data.x, data.edge_index, data.batch, data.y
+                model.zero_grad()
+                preds, att = model(x, edge_index, batch)
+                loss = loss_fn(preds, y.reshape(-1, 1))
 
-            loss.backward()
-            optimizer.step()
+                loss.backward()
+                optimizer.step()
 
         # evaluation loop
         preds_batches = []
