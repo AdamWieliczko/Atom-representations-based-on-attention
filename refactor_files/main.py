@@ -111,8 +111,9 @@ best_rmse_score = -1
 
 for current_valid_loader in dataset_loaders:
     current_m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=layer, features_after_layer=num_of_feats_after)
-    current_m = train_best(current_m, dataset_loaders, current_valid_loader, rmse, epochs=num_of_epochs)
-    predictions, att = predict(m, test_dataset_loader)
+    train_loaders = train_loaders = [loader for loader in dataset_loaders if loader != current_valid_loader]
+    current_m = train_best(current_m, train_loaders, current_valid_loader, rmse, epochs=num_of_epochs)
+    predictions, att = predict(current_m, test_dataset_loader)
     rmse_score = rmse(y, predictions.flatten())
     if best_rmse_score == -1 or best_rmse_score < rmse_score:
         best_rmse_score = rmse_score

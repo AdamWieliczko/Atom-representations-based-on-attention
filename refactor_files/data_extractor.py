@@ -6,9 +6,8 @@ import pandas as pd
 import torch
 from torch_geometric.loader import DataLoader as GraphDataLoader
 from sklearn.utils import shuffle
-from representations import defaultRepresentation, representation1, representation10, representationAll
+from representations import representation1, representation10, representationAll
 from rdkit.Chem import PandasTools
-from sklearn import StratifiedKFold
 
 class Featurizer:
     def __init__(self, y_column, smiles_col='Drug', **kwargs):
@@ -81,8 +80,8 @@ def GetDataCSV(path, y_column, smiles, seed):
 
     dataset = shuffle(dataset, random_state=seed)
 
-    test_dataset = dataset[:len(dataset)*0.1]
-    dataset = dataset[len(dataset)*0.1:]
+    test_data = dataset[:len(dataset) // 10]
+    dataset = dataset[len(dataset) // 10:]
 
     core_dataset_loaders = []
     subset_size = len(dataset) // 5
@@ -94,7 +93,7 @@ def GetDataCSV(path, y_column, smiles, seed):
     core_dataset_loaders.append(dataset[4*subset_size:])
     
     featurizer = ECFPFeaturizer(y_column=y_column, smiles_col=smiles)
-    X, y = featurizer(test_dataset)
+    X, y = featurizer(test_data)
     batch_size = 64
     featurizer = GraphFeaturizer(y_column, smiles_col=smiles)
 
@@ -106,6 +105,8 @@ def GetDataCSV(path, y_column, smiles, seed):
         dataset_loaders1.append(GraphDataLoader(featurizer(core_dataset, representation1), batch_size=batch_size, shuffle=False))
         dataset_loaders10.append(GraphDataLoader(featurizer(core_dataset, representation10), batch_size=batch_size, shuffle=False))
         dataset_loaders.append(GraphDataLoader(featurizer(core_dataset, representationAll), batch_size=batch_size, shuffle=False))
+
+    test_dataset = GraphDataLoader(featurizer(test_data, representation1), batch_size=batch_size, shuffle=False)
 
     return X, y, test_dataset, dataset_loaders1, dataset_loaders10, dataset_loaders
 
@@ -128,8 +129,8 @@ def GetDataSDFHuman(path, y_column, smiles, seed):
 
     dataset = shuffle(dataset, random_state=seed)
 
-    test_dataset = dataset[:len(dataset)*0.1]
-    dataset = dataset[len(dataset)*0.1:]
+    test_data = dataset[:len(dataset) // 10]
+    dataset = dataset[len(dataset) // 10:]
 
     core_dataset_loaders = []
     subset_size = len(dataset) // 5
@@ -140,7 +141,7 @@ def GetDataSDFHuman(path, y_column, smiles, seed):
     core_dataset_loaders.append(dataset[3*subset_size:4*subset_size])
     core_dataset_loaders.append(dataset[4*subset_size:])
 
-    X, y = featurizer(test_dataset)
+    X, y = featurizer(test_data)
 
     batch_size = 64
 
@@ -152,6 +153,8 @@ def GetDataSDFHuman(path, y_column, smiles, seed):
         dataset_loaders1.append(GraphDataLoader(featurizer(core_dataset, representation1), batch_size=batch_size, shuffle=False))
         dataset_loaders10.append(GraphDataLoader(featurizer(core_dataset, representation10), batch_size=batch_size, shuffle=False))
         dataset_loaders.append(GraphDataLoader(featurizer(core_dataset, representationAll), batch_size=batch_size, shuffle=False))
+
+    test_dataset = GraphDataLoader(featurizer(test_data, representation1), batch_size=batch_size, shuffle=False)
 
     return X, y, test_dataset, dataset_loaders1, dataset_loaders10, dataset_loaders
 
@@ -172,8 +175,8 @@ def GetDataSDFRat(path, y_column, smiles, seed):
     dataset['smiles'] = dataset['smiles'].apply(lambda x: Chem.MolToSmiles(x))
 
 
-    test_dataset = dataset[:len(dataset)*0.1]
-    dataset = dataset[len(dataset)*0.1:]
+    test_data = dataset[:len(dataset) // 10]
+    dataset = dataset[len(dataset) // 10:]
 
     core_dataset_loaders = []
     subset_size = len(dataset) // 5
@@ -186,7 +189,7 @@ def GetDataSDFRat(path, y_column, smiles, seed):
 
     featurizer = ECFPFeaturizer(y_column=y_column, smiles_col=smiles)
 
-    X, y = featurizer(test_dataset)
+    X, y = featurizer(test_data)
 
     batch_size = 64
     featurizer = GraphFeaturizer(y_column, smiles_col=smiles)
@@ -199,5 +202,7 @@ def GetDataSDFRat(path, y_column, smiles, seed):
         dataset_loaders1.append(GraphDataLoader(featurizer(core_dataset, representation1), batch_size=batch_size, shuffle=False))
         dataset_loaders10.append(GraphDataLoader(featurizer(core_dataset, representation10), batch_size=batch_size, shuffle=False))
         dataset_loaders.append(GraphDataLoader(featurizer(core_dataset, representationAll), batch_size=batch_size, shuffle=False))
+
+    test_dataset = GraphDataLoader(featurizer(test_data, representationAll), batch_size=batch_size, shuffle=False)
 
     return X, y, test_dataset, dataset_loaders1, dataset_loaders10, dataset_loaders

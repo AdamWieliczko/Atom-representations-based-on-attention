@@ -155,13 +155,12 @@ def predict(model, test_loader):
     with torch.no_grad():
         for data in test_loader:
             x, edge_index, batch = data.x, data.edge_index, data.batch
-            
             preds, att = model(x, edge_index, batch)
             preds_batches.append(preds.cpu().detach().numpy())
     preds = np.concatenate(preds_batches)
     return preds, att
 
-def train_best(model, train_loaders, valid_loader, rmse, y_valid, epochs=20, learning_rate = 0.01, saveImg=False, title=""):
+def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rate = 0.01, saveImg=False, title=""):
     model.train()
 
     torch.save(model, "train.pth")
@@ -185,12 +184,17 @@ def train_best(model, train_loaders, valid_loader, rmse, y_valid, epochs=20, lea
 
         # evaluation loop
         preds_batches = []
+        y_batches = []
+
         with torch.no_grad():
             for data in valid_loader:
                 x, edge_index, batch, y = data.x, data.edge_index, data.batch, data.y
                 preds, att = model(x, edge_index, batch)
                 loss = loss_fn(preds, y.reshape(-1, 1))
                 preds_batches.append(preds.cpu().detach().numpy())
+                y_batches.append(data.y)
+
+        y_valid = np.concatenate(y_batches)
         preds = np.concatenate(preds_batches)
         mae = rmse(y_valid, preds.flatten())
         if mae < best_val:
