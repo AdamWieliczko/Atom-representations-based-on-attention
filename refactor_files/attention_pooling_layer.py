@@ -160,21 +160,21 @@ def predict(model, test_loader):
     preds = np.concatenate(preds_batches)
     return preds, att
 
-def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rate = 0.01, saveImg=False, title=""):
-    model.train()
+def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rate=0.01, saveImg=False, title=""):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
-    torch.save(model, "train.pth")
+    torch.save(model.state_dict(), "train.pth")
     best_val = 1000000
     
     # training loop
-    optimizer = torch.optim.Adam(model.parameters(), learning_rate) # TODO: define an optimizer
-    loss_fn = torch.nn.MSELoss()  # TODO: define a loss function
+    optimizer = torch.optim.Adam(model.parameters(), learning_rate) 
+    loss_fn = torch.nn.MSELoss()
     for epoch in range(1, epochs + 1):
-        # preds_batches = []
         running_loss = 0.0
         for train_loader in train_loaders:
             for data in train_loader:
-                x, edge_index, batch, y = data.x, data.edge_index, data.batch, data.y
+                x, edge_index, batch, y = data.x.to(device), data.edge_index.to(device), data.batch.to(device), data.y.to(device)
                 model.zero_grad()
                 preds, att = model(x, edge_index, batch)
                 loss = loss_fn(preds, y.reshape(-1, 1))
@@ -188,7 +188,7 @@ def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rat
 
         with torch.no_grad():
             for data in valid_loader:
-                x, edge_index, batch, y = data.x, data.edge_index, data.batch, data.y
+                x, edge_index, batch, y = data.x.to(device), data.edge_index.to(device), data.batch.to(device), data.y.to(device)
                 preds, att = model(x, edge_index, batch)
                 loss = loss_fn(preds, y.reshape(-1, 1))
                 preds_batches.append(preds.cpu().detach().numpy())
@@ -198,13 +198,14 @@ def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rat
         preds = np.concatenate(preds_batches)
         mae = rmse(y_valid, preds.flatten())
         if mae < best_val:
-            torch.save(model, "train.pth")
+            torch.save(model.state_dict(), "train.pth")
             best_val = mae
             print(best_val)
 
-    model = torch.load("train.pth")
+    model.load_state_dict(torch.load("train.pth"))
     model.eval()
     return model
+
 
 
 

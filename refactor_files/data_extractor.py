@@ -149,6 +149,8 @@ def GetDataSDFHuman(path, y_column, smiles, seed):
     dataset_loaders10 = []
     dataset_loaders = []
 
+    featurizer = GraphFeaturizer(y_column, smiles_col=smiles)
+
     for core_dataset in core_dataset_loaders:
         dataset_loaders1.append(GraphDataLoader(featurizer(core_dataset, representation1), batch_size=batch_size, shuffle=False))
         dataset_loaders10.append(GraphDataLoader(featurizer(core_dataset, representation10), batch_size=batch_size, shuffle=False))
