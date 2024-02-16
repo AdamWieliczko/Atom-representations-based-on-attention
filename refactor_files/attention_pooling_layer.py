@@ -160,7 +160,10 @@ def predict(model, test_loader):
     preds = np.concatenate(preds_batches)
     return preds, att
 
-def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rate=0.01, saveImg=False, title=""):
+def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rate=0.01, seed=1, saveImg=False, title=""):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -200,8 +203,8 @@ def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rat
         if mae < best_val:
             torch.save(model.state_dict(), "train.pth")
             best_val = mae
-            print(best_val)
-
+    
+    print("Training best val: " + str(best_val))
     model.load_state_dict(torch.load("train.pth"))
     model.eval()
     return model
