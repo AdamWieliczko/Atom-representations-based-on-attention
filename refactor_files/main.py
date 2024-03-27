@@ -6,7 +6,8 @@ from attention_pooling_layer import visualize, GraphNeuralNetwork, predict, MyAt
 from tdc import Evaluator
 from data_extractor import GetDataCSV, GetDataSDFHuman, GetDataSDFRat
 from argument_parser import parse_args
-from sklearn.model_selection import StratifiedKFold
+import copy
+import neptune
 
 params = parse_args('main')
 
@@ -36,9 +37,7 @@ num_of_channels = params.number_of_channels
 
 num_of_epochs = params.number_of_epochs
 
-if params.module == "MyAttentionModule":
-    layer = MyAttentionModule(num_of_feats)
-elif params.module == "MyAttentionModule3":
+if params.module == "MyAttentionModule3":
     layer = MyAttentionModule3(num_of_feats)
 elif params.module == "MyAttentionModule4":
     layer = MyAttentionModule4(num_of_feats)
@@ -107,19 +106,37 @@ elif params.module == "MyAttentionModule4":
 # dataset_loader = dataset_loader[:len(dataset_loader)*0.9]
 #y_test = y[:980]
 
-best_rmse_score = -1
+best_rmse_score = 10000
+
+neptune_project = params.neptune_project
+neptune_api_key = params.neptune_api_key
+
+if neptune_project is not None and neptune_api_key is not None:
+    neptune_run = neptune.init_run(
+        project=neptune_project,
+        api_token=neptune_api_key,
+    )
+else:
+    neptune_run = None
+
+i = 0
 
 for current_valid_loader in dataset_loaders:
-    current_m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=layer, features_after_layer=num_of_feats_after)
-    train_loaders = train_loaders = [loader for loader in dataset_loaders if loader != current_valid_loader]
-    current_m = train_best(current_m, train_loaders, current_valid_loader, rmse, epochs=num_of_epochs)
+    print("Changing test loader")
+    copy_of_layer = copy.deepcopy(layer)
+    current_m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=copy_of_layer, features_after_layer=num_of_feats_after)
+    train_loaders = [loader for loader in dataset_loaders if loader != current_valid_loader]
+    current_m = train_best(current_m, train_loaders, current_valid_loader, rmse, epochs=num_of_epochs, seed=seed, neptune_run=neptune_run, run_number=i)
     predictions, att = predict(current_m, test_dataset_loader)
     rmse_score = rmse(y, predictions.flatten())
-    if best_rmse_score == -1 or best_rmse_score < rmse_score:
+    if best_rmse_score == 10000 or best_rmse_score > rmse_score:
         best_rmse_score = rmse_score
         m = current_m
+    i = i + 1
 
-print("{:.2f}".format(rmse_score))
+torch.save(m.state_dict(), "best_model.pth")
+
+print("{:.2f}".format(best_rmse_score))
 
 ###################### atencja #################################
 
@@ -143,7 +160,7 @@ with torch.no_grad():
         df_batch.loc[len(df_single)] = torch.mean(gap(att, batch), dim=0).tolist()
 preds = np.concatenate(preds_batches)
 
-rmse_score = rmse(y, predictions.flatten())
+rmse_score = rmse(y, preds.flatten())
 print(f'RMSE = {rmse_score:.2f}')
 df_single.to_csv("esol_att_single.csv")
 df_batch.to_csv("esol_att_batch.csv")

@@ -15,6 +15,7 @@ The official paper can be found below:
 4. [pyTorch](https://pytorch.org/)
 5. [PyTDC](https://gpytorch.ai/)
 6. [PyG](https://pytorch-geometric.readthedocs.io/en/latest/)
+7. [Neptune (Optional)](https://neptune.ai/)
 
 ### Installation
 
