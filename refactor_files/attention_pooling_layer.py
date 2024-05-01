@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
-from torch_geometric.nn import GCNConv, GINConv
+from torch_geometric.nn import GCNConv, GINConv, GATConv
 import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool as gap
 from copy import deepcopy
@@ -42,6 +42,14 @@ class MyAttentionModule(torch.nn.Module): # zakladamy ze atom ma 49 featerow
         x = torch.sum(x, dim=-2)
         
         return x, attention
+    
+    def optimize_parameters(self, optimizer, criterion, x, edge_index, batch, y):
+        optimizer.zero_grad()
+        output, attention = self.forward(x, edge_index, batch)
+        loss = criterion(output, y)
+        loss.backward()
+        optimizer.step()
+        return loss
 
 
 #warstwa attention pooling
@@ -99,15 +107,27 @@ class MyAttentionModule4(MyAttentionModule): # zakladamy ze atom ma 49 featerow
 
 
 class GraphNeuralNetwork(torch.nn.Module):  # TODO: assign hyperparameters to attributes and define the forward pass
-    def __init__(self, hidden_size, n_convs=3, my_layer=None, features_after_layer=26, n_features=49, dropout=0.2):
+    def __init__(self, hidden_size, n_convs=3, my_layer=None, features_after_layer=26, n_features=49, dropout=0.2, layer_type = "GCN", batch_bool = False):
         super().__init__()
         self.myAttentionModule = my_layer
         self.dropout = dropout
+        self.batch_norm_bool = batch_bool
 
         convs = torch.nn.ModuleList()
-        convs.append(GCNConv(features_after_layer, hidden_size))
+        if layer_type == "GIN":
+            convs.append(GINConv(features_after_layer, hidden_size))
+        elif layer_type == "GAT":
+            convs.append(GATConv(features_after_layer, hidden_size))
+        else:
+            convs.append(GCNConv(features_after_layer, hidden_size))
+
         for i in range(1, n_convs):
-            convs.append(GCNConv(hidden_size, hidden_size))
+            if layer_type == "GIN":
+                convs.append(GINConv(hidden_size, hidden_size))
+            elif layer_type == "GAT":
+                convs.append(GATConv(hidden_size, hidden_size))
+            else:
+                convs.append(GCNConv(hidden_size, hidden_size))
         self.convs = convs
         self.linear = torch.nn.Linear(hidden_size, 1)
     
@@ -117,6 +137,9 @@ class GraphNeuralNetwork(torch.nn.Module):  # TODO: assign hyperparameters to at
             x, att = self.myAttentionModule(x, edge_index, batch)
         for i in range(0, len(self.convs)-1):
             x = self.convs[i](x, edge_index)
+            if self.batch_norm_bool:
+                x = torch.nn.functional.batch_norm(x)
+
             x = x.relu()
         x = self.convs[-1](x, edge_index)
         
@@ -160,7 +183,7 @@ def predict(model, test_loader):
     preds = np.concatenate(preds_batches)
     return preds, att
 
-def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rate=0.01, seed=1, run_number=0, neptune_run=None, saveImg=False, title=""):
+def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rate=0.01, seed=1, run_number=0, neptune_run=None, saveImg=False, title="", is_fine_tuning=False):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -203,8 +226,14 @@ def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rat
         if mae < best_val:
             torch.save(model.state_dict(), "train.pth")
             best_val = mae
-        neptune_run[f"train_best/{run_number}_loader/epoch"].append(mae)
-    neptune_run[f"train_best/{run_number}_loader/best_val"].append(best_val)
+        if is_fine_tuning:
+            neptune_run[f"fine_tuning/train_best/{run_number}_loader/epoch"].append(mae)
+        else:
+            neptune_run[f"train_best/{run_number}_loader/epoch"].append(mae)
+    if is_fine_tuning:
+        neptune_run[f"fine_tuning/train_best/{run_number}_loader/best_val"].append(mae)
+    else:
+        neptune_run[f"train_best/{run_number}_loader/best_val"].append(best_val)
     print("Training best val: " + str(best_val))
     model.load_state_dict(torch.load("train.pth"))
     model.eval()

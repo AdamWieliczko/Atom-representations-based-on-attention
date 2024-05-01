@@ -14,6 +14,10 @@ def parse_args(script):
     parser.add_argument('--seed', type=int, default=1, help='CUB/miniImagenet/cross/omniglot/cross_char')
     parser.add_argument('--neptune_project', default=None, help='Neptune Project Name (optional)')
     parser.add_argument('--neptune_api_key', default=None, help='Neptune API Key (optional)')
-    parser.add_argument('--', default=None, help=' (optional)')
+    parser.add_argument('--fine_tune', default=None, help='Neptune Project Name (optional)')
+    parser.add_argument('--path_to_fine_tune', default=None, help='Neptune API Key (optional)')
+    parser.add_argument('--y_column_fine_tune', default=None, help='Neptune Project Name (optional)')
+    parser.add_argument('--type_of_layer', default=None, help='Neptune API Key (optional)')
+    parser.add_argument('--batch_norm', type=bool, default=False, help='Bool that indicates if you want model to use batch norm (default is False)')
 
     return parser.parse_args()

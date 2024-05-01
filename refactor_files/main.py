@@ -29,6 +29,9 @@ elif dataset in ['human_halflifetime.sdf']:
 else:
     X, y, test_dataset_loader, dataset_loaders1, dataset_loaders10, dataset_loaders = GetDataSDFRat(path, y_column, smiles, seed)
 
+type_of_layer = params.type_of_layer
+batch_norm = params.batch_norm
+
 num_of_feats = params.number_of_features_before_layer
 num_of_feats_after = params.number_of_features_after_layer
 
@@ -36,6 +39,10 @@ num_of_convs = params.number_of_convs
 num_of_channels = params.number_of_channels
 
 num_of_epochs = params.number_of_epochs
+
+fine_tune = params.fine_tune
+path_to_fine_tune = params.path_to_fine_tune
+y_column_fine_tune = params.y_column_fine_tune
 
 if params.module == "MyAttentionModule3":
     layer = MyAttentionModule3(num_of_feats)
@@ -124,7 +131,7 @@ i = 0
 for current_valid_loader in dataset_loaders:
     print("Changing test loader")
     copy_of_layer = copy.deepcopy(layer)
-    current_m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=copy_of_layer, features_after_layer=num_of_feats_after)
+    current_m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=copy_of_layer, features_after_layer=num_of_feats_after, layer_type = type_of_layer, batch_bool = batch_norm)
     train_loaders = [loader for loader in dataset_loaders if loader != current_valid_loader]
     current_m = train_best(current_m, train_loaders, current_valid_loader, rmse, epochs=num_of_epochs, seed=seed, neptune_run=neptune_run, run_number=i)
     predictions, att = predict(current_m, test_dataset_loader)
@@ -142,11 +149,11 @@ print("{:.2f}".format(best_rmse_score))
 
 df_single = pd.DataFrame({"AtomicNum": [], "Degree": [], "TotalNumHs": [], "ImplicitValence": [], "Hybridization": [], "FormalCharge": [],
                           "IsInRing": [], "IsAromatic": [], "NumRadicalElectrons": []})
-df_single.style.set_caption("Hello World")
+df_single.style.set_caption("Single")
 
 df_batch = pd.DataFrame({"AtomicNum": [], "Degree": [], "TotalNumHs": [], "ImplicitValence": [], "Hybridization": [], "FormalCharge": [],
                           "IsInRing": [], "IsAromatic": [], "NumRadicalElectrons": []})
-df_batch.style.set_caption("Hello World")
+df_batch.style.set_caption("Batch")
 
 preds_batches = []
 with torch.no_grad():
@@ -162,9 +169,64 @@ preds = np.concatenate(preds_batches)
 
 rmse_score = rmse(y, preds.flatten())
 print(f'RMSE = {rmse_score:.2f}')
-df_single.to_csv("esol_att_single.csv")
-df_batch.to_csv("esol_att_batch.csv")
+df_single.to_csv("model_single.csv")
+df_batch.to_csv("model_batch.csv")
 
 
 
-## ZWRACAĆ X I Y TESTU, ZMNIEJSZYĆ DATASET STARTOWY O ILEŚ
+if fine_tune == True:
+    if dataset in ['qm9.csv', 'esol.csv']:
+        X, y, test_dataset_loader, dataset_loaders1, dataset_loaders10, dataset_loaders = GetDataCSV(path_to_fine_tune, y_column_fine_tune, smiles, seed)
+    elif dataset in ['human_halflifetime.sdf']:
+        X, y, test_dataset_loader, dataset_loaders1, dataset_loaders10, dataset_loaders = GetDataSDFHuman(path_to_fine_tune, y_column_fine_tune, smiles, seed)
+    else:
+        X, y, test_dataset_loader, dataset_loaders1, dataset_loaders10, dataset_loaders = GetDataSDFRat(path_to_fine_tune, y_column_fine_tune, smiles, seed)
+        
+    i = 0
+    best_rmse_score = 10000
+    
+    print("Start of fine tuning:")
+    for current_valid_loader in dataset_loaders:
+        
+        print("Changing test loader")
+        copy_of_layer = copy.deepcopy(layer)
+        current_m =  GraphNeuralNetwork(hidden_size=num_of_channels, n_convs=num_of_convs, my_layer=copy_of_layer, features_after_layer=num_of_feats_after, layer_type = type_of_layer, batch_bool = batch_norm)
+        train_loaders = [loader for loader in dataset_loaders if loader != current_valid_loader]
+        current_m = train_best(current_m, train_loaders, current_valid_loader, rmse, epochs=num_of_epochs, seed=seed, neptune_run=neptune_run, run_number=i)
+        predictions, att = predict(current_m, test_dataset_loader)
+        rmse_score = rmse(y, predictions.flatten())
+        if best_rmse_score == 10000 or best_rmse_score > rmse_score:
+            best_rmse_score = rmse_score
+            fine_tuned_m = current_m
+        i = i + 1
+
+    torch.save(fine_tuned_m.state_dict(), "best_fine_tuned_model.pth")
+
+    print("{:.2f}".format(best_rmse_score))
+
+    ###################### atencja #################################
+
+    df_single = pd.DataFrame({"AtomicNum": [], "Degree": [], "TotalNumHs": [], "ImplicitValence": [], "Hybridization": [], "FormalCharge": [],
+                            "IsInRing": [], "IsAromatic": [], "NumRadicalElectrons": []})
+    df_single.style.set_caption("Single")
+
+    df_batch = pd.DataFrame({"AtomicNum": [], "Degree": [], "TotalNumHs": [], "ImplicitValence": [], "Hybridization": [], "FormalCharge": [],
+                            "IsInRing": [], "IsAromatic": [], "NumRadicalElectrons": []})
+    df_batch.style.set_caption("Batch")
+
+    preds_batches = []
+    with torch.no_grad():
+        for data in test_dataset_loader:
+            x, edge_index, batch = data.x, data.edge_index, data.batch
+            
+            preds, att = m(x, edge_index, batch)
+            preds_batches.append(preds.cpu().detach().numpy())
+            att = att.squeeze()
+            df_single.loc[len(df_single)] = att[0].tolist()
+            df_batch.loc[len(df_single)] = torch.mean(gap(att, batch), dim=0).tolist()
+    preds = np.concatenate(preds_batches)
+
+    rmse_score = rmse(y, preds.flatten())
+    print(f'RMSE = {rmse_score:.2f}')
+    df_single.to_csv("fine_tuned_model_single.csv")
+    df_batch.to_csv("fine_tuned_model_batch.csv")
