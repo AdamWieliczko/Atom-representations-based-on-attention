@@ -226,14 +226,16 @@ def train_best(model, train_loaders, valid_loader, rmse, epochs=20, learning_rat
         if mae < best_val:
             torch.save(model.state_dict(), "train.pth")
             best_val = mae
+        if neptune_run is not None:
+            if is_fine_tuning:
+                neptune_run[f"fine_tuning/train_best/{run_number}_loader/epoch"].append(mae)
+            else:
+                neptune_run[f"train_best/{run_number}_loader/epoch"].append(mae)
+    if neptune_run is not None:
         if is_fine_tuning:
-            neptune_run[f"fine_tuning/train_best/{run_number}_loader/epoch"].append(mae)
+            neptune_run[f"fine_tuning/train_best/{run_number}_loader/best_val"].append(mae)
         else:
-            neptune_run[f"train_best/{run_number}_loader/epoch"].append(mae)
-    if is_fine_tuning:
-        neptune_run[f"fine_tuning/train_best/{run_number}_loader/best_val"].append(mae)
-    else:
-        neptune_run[f"train_best/{run_number}_loader/best_val"].append(best_val)
+            neptune_run[f"train_best/{run_number}_loader/best_val"].append(best_val)
     print("Training best val: " + str(best_val))
     model.load_state_dict(torch.load("train.pth"))
     model.eval()

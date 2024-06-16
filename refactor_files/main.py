@@ -172,6 +172,8 @@ print(f'RMSE = {rmse_score:.2f}')
 df_single.to_csv("model_single.csv")
 df_batch.to_csv("model_batch.csv")
 
+if neptune_run is not None:
+    neptune_run[f"test/test_loader/rmse_score"].append(rmse_score)
 
 
 if fine_tune == True:
