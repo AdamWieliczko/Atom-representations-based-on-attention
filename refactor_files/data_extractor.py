@@ -75,7 +75,7 @@ class ECFPFeaturizer(Featurizer):
 
 
 
-def GetDataCSV(path, y_column, smiles, seed):
+def GetDataCSV(path, y_column, smiles, seed, batch_size):
     dataset = pd.read_csv(path)
 
     dataset = shuffle(dataset, random_state=seed)
@@ -94,7 +94,6 @@ def GetDataCSV(path, y_column, smiles, seed):
     
     featurizer = ECFPFeaturizer(y_column=y_column, smiles_col=smiles)
     X, y = featurizer(test_data)
-    batch_size = 64
     featurizer = GraphFeaturizer(y_column, smiles_col=smiles)
 
     dataset_loaders1 = []
@@ -112,7 +111,7 @@ def GetDataCSV(path, y_column, smiles, seed):
 
     ### WYWALIĆ X, CHYBA NIE POTRZEBNY
 
-def GetDataSDFHuman(path, y_column, smiles, seed):
+def GetDataSDFHuman(path, y_column, smiles, seed, batch_size):
     dataset = PandasTools.LoadSDF(path)
 
     dataset = shuffle(dataset, random_state=seed)
@@ -143,8 +142,6 @@ def GetDataSDFHuman(path, y_column, smiles, seed):
 
     X, y = featurizer(test_data)
 
-    batch_size = 64
-
     dataset_loaders1 = []
     dataset_loaders10 = []
     dataset_loaders = []
@@ -163,7 +160,7 @@ def GetDataSDFHuman(path, y_column, smiles, seed):
 
 
 
-def GetDataSDFRat(path, y_column, smiles, seed):
+def GetDataSDFRat(path, y_column, smiles, seed, batch_size):
     dataset = PandasTools.LoadSDF(path)
 
     dataset = shuffle(dataset, random_state=seed)
@@ -193,7 +190,6 @@ def GetDataSDFRat(path, y_column, smiles, seed):
 
     X, y = featurizer(test_data)
 
-    batch_size = 64
     featurizer = GraphFeaturizer(y_column, smiles_col=smiles)
     
     dataset_loaders1 = []
